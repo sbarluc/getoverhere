@@ -53,6 +53,26 @@ class Jugador:
     def actualizar(self, dt, teclas):
 
         # ------------------
+        # Propulsión angular (rotación)
+        # ------------------
+        
+        if teclas[pygame.K_q]:
+            self.velocidad_angular += self.aceleracion_angular * dt
+        
+        if teclas[pygame.K_e]:
+            self.velocidad_angular -= self.aceleracion_angular * dt
+        
+        self.velocidad_angular *= self.amortiguamiento_angular
+        
+        # Límite de velocidad angular
+        if self.velocidad_angular > self.velocidad_angular_maxima:
+            self.velocidad_angular = self.velocidad_angular_maxima
+        elif self.velocidad_angular < -self.velocidad_angular_maxima:
+            self.velocidad_angular = -self.velocidad_angular_maxima
+        
+        self.angulo += self.velocidad_angular * dt
+
+        # ------------------
         # Propulsión lineal
         # ------------------
         
