@@ -56,6 +56,8 @@ class Jugador:
         # Propulsión lineal
         # ------------------
         
+        esta_propulsando = False
+        
         if teclas[pygame.K_w]:
 
             radianes = math.radians(self.angulo)
@@ -65,6 +67,17 @@ class Jugador:
 
             self.vx += ax * dt
             self.vy += ay * dt
+
+            esta_propulsando = True
+
+        # ------------------
+        # Límite de velocidad lineal
+        # ------------------
+        
+        rapidez = math.sqrt(self.vx**2 + self.vy**2)
+        if rapidez > self.velocidad_maxima:
+            self.vx = (self.vx / rapidez) * self.velocidad_maxima
+            self.vy = (self.vy / rapidez) * self.velocidad_maxima
 
         # ------------------
         # Movimiento
@@ -76,18 +89,28 @@ class Jugador:
         self.x = self.x % ANCHO
         self.y = self.y % ALTO
 
-        # ------------------
-        # Límite de velocidad lineal
-        # ------------------
-        
-        rapidez = math.sqrt(self.vx**2 + self.vy**2)
-        if rapidez > self.velocidad_maxima:
-            self.vx = (self.vx / rapidez) * self.velocidad_maxima
-            self.vy = (self.vy / rapidez) * self.velocidad_maxima
-
+        # Efecto de estela
+        if esta_propulsando:
+            self.estela.append((self.x, self.y))
+            if len(self.estela) > 20:
+                self.estela.pop(0)
+        else:
+            if self.estela: 
+                self.estela.pop(0)
         
 
     def dibujar(self, pantalla):
+
+        # Estela
+        if len(self.estela) > 2:
+            for i in range(len(self.estela) - 1):
+                # Dibujar círculos simples para la estela
+                pygame.draw.circle(
+                    pantalla,
+                    (100, 100, 255),
+                    (int(self.estela[i][0]), int(self.estela[i][1])),
+                    2
+                )
 
         radianes = math.radians(self.angulo)
         punta = (
@@ -102,6 +125,20 @@ class Jugador:
             self.x + math.cos(radianes - 2.4) * 15,
             self.y - math.sin(radianes - 2.4) * 15
         )
+
+        # Efecto de llama
+        if self.estela and len(self.estela) > 1:
+            # Dibujar llama en la parte trasera de la nave
+            efecto_llama = (
+                self.x - math.cos(radianes) * (10 + random.randint(5, 100)),
+                self.y + math.sin(radianes) * (10 + random.randint(5, 100))
+            )
+            pygame.draw.circle(
+                pantalla,
+                (200+55*random.random(), 75+100*random.random(), 75+75*random.random()),
+                (int(efecto_llama[0]), int(efecto_llama[1])),
+                random.randint(0,5)
+            )
 
         pygame.draw.polygon(
             pantalla,
@@ -123,8 +160,8 @@ def generar_estrellas(cantidad):
         x = random.randint(0, ANCHO)
         y = random.randint(0, ALTO)
 
-        radio = random.randint(3, 5)
-        brillo = random.randint(33, 255)
+        radio = random.randint(1, 4)
+        brillo = random.randint(33, 150)
         rand_1 = random.randint(0,255)
         color = (rand_1, random.randint(0,100), 255-rand_1 )
 
