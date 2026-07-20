@@ -27,8 +27,8 @@ class Jugador:
 
     def __init__(self):
 
-        self.x = ANCHO / 2
-        self.y = ALTO / 2
+        self.x = random.random() * ANCHO
+        self.y = random.random() * ALTO
 
         self.angulo = 0
         self.velocidad_angular = 0  # grados/segundo (velocidad actual)
@@ -37,12 +37,12 @@ class Jugador:
         self.vy = 0
 
         # Propulsión lineal
-        self.empuje_lineal = 350           # píxeles/segundo²
-        self.velocidad_maxima = 500        # límite de velocidad lineal
+        self.empuje_lineal = 50           # píxeles/segundo²
+        self.velocidad_maxima = 100        # límite de velocidad lineal
         
         # Propulsión angular
-        self.aceleracion_angular = 360     # grados/segundo²
-        self.velocidad_angular_maxima = 540  # grados/segundo (límite de velocidad angular)
+        self.aceleracion_angular = 200     # grados/segundo²
+        self.velocidad_angular_maxima = 300  # grados/segundo (límite de velocidad angular)
         self.amortiguamiento_angular = 1.0   # sin fricción (1.0 = sin pérdida)
 
         self.radio = 15
@@ -127,35 +127,35 @@ class Jugador:
                 # Dibujar círculos simples para la estela
                 pygame.draw.circle(
                     pantalla,
-                    (100, 100, 255),
+                    (250, 50, 70),
                     (int(self.estela[i][0]), int(self.estela[i][1])),
-                    2
+                    1
                 )
 
         radianes = math.radians(self.angulo)
         punta = (
-            self.x + math.cos(radianes) * 20,
-            self.y - math.sin(radianes) * 20
+            self.x + math.cos(radianes) * 10,
+            self.y - math.sin(radianes) * 10
         )
         izquierda = (
-            self.x + math.cos(radianes + 2.4) * 15,
-            self.y - math.sin(radianes + 2.4) * 15
+            self.x + math.cos(radianes + 2.4) * 7.5,
+            self.y - math.sin(radianes + 2.4) * 7.5
         )
         derecha = (
-            self.x + math.cos(radianes - 2.4) * 15,
-            self.y - math.sin(radianes - 2.4) * 15
+            self.x + math.cos(radianes - 2.4) * 7.5,
+            self.y - math.sin(radianes - 2.4) * 7.5
         )
 
         # Efecto de llama
         if self.estela and len(self.estela) > 1:
             # Dibujar llama en la parte trasera de la nave
             efecto_llama = (
-                self.x - math.cos(radianes) * (10 + random.randint(5, 100)),
-                self.y + math.sin(radianes) * (10 + random.randint(5, 100))
+                self.x - math.cos(radianes) * (1 + random.randint(5, 60)),
+                self.y + math.sin(radianes) * (1 + random.randint(5, 60))
             )
             pygame.draw.circle(
                 pantalla,
-                (200+55*random.random(), 75+100*random.random(), 75+75*random.random()),
+                (250, 150, 70),
                 (int(efecto_llama[0]), int(efecto_llama[1])),
                 random.randint(0,5)
             )
@@ -165,7 +165,6 @@ class Jugador:
             COLOR_JUGADOR,
             [punta, izquierda, derecha],
         )
-
 
 # ==========================================================
 # ESTRELLAS
