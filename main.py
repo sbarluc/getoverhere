@@ -76,6 +76,17 @@ class Jugador:
         self.x = self.x % ANCHO
         self.y = self.y % ALTO
 
+        # ------------------
+        # Límite de velocidad lineal
+        # ------------------
+        
+        rapidez = math.sqrt(self.vx**2 + self.vy**2)
+        if rapidez > self.velocidad_maxima:
+            self.vx = (self.vx / rapidez) * self.velocidad_maxima
+            self.vy = (self.vy / rapidez) * self.velocidad_maxima
+
+        
+
     def dibujar(self, pantalla):
 
         radianes = math.radians(self.angulo)
