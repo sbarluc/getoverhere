@@ -4,6 +4,7 @@ import os
 os.environ['SDL_VIDEODRIVER'] = 'x11'  # o 'wayland'
 
 import pygame
+from models.objeto import Objeto
 
 # ==========================================================
 # CONFIGURACIÓN
@@ -18,108 +19,41 @@ COLOR_FONDO = (5, 5, 15)
 COLOR_JUGADOR = (220, 220, 255)
 COLOR_ESTELA = (100, 100, 255)
 
-# Constantes de gravedad
-GRAVEDAD = 200  # Constante gravitacional (ajustable)
-DISTANCIA_MINIMA = 30  # Distancia mínima para evitar singularidades
-
-
-# ==========================================================
-# OBJETO
-# ==========================================================
-
-class Objeto:
-    
-    def __init__(self, x, y, masa=1.0, radio=8):
-        self.x = x
-        self.y = y
-        self.vx = random.uniform(-5, 5)
-        self.vy = random.uniform(-5, 5)
-        self.masa = masa
-        self.radio = radio
-        self.color = (200, 100, 50)  # Color naranja/marrón para los objetos
-        
-    def aplicar_gravedad(self, dt, cuerpos):
-        ax = 0
-        ay = 0
-        
-        for cuerpo in cuerpos:
-            dx = cuerpo.x - self.x
-            dy = cuerpo.y - self.y
-            distancia = math.sqrt(dx**2 + dy**2)
-            
-            if distancia < DISTANCIA_MINIMA:
-                distancia = DISTANCIA_MINIMA
-            
-            fuerza = GRAVEDAD * cuerpo.masa / (distancia ** 2)
-            
-            # Componentes de la aceleración
-            ax += fuerza * (dx / distancia)
-            ay += fuerza * (dy / distancia)
-        
-        # Aplicamos la aceleración
-        self.vx += ax * dt
-        self.vy += ay * dt
-        
-        # Movimiento
-        self.x += self.vx * dt
-        self.y += self.vy * dt
-        
-        # Bordes
-        self.x = self.x % ANCHO
-        self.y = self.y % ALTO
-    
-    def dibujar(self, pantalla):
-        pygame.draw.circle(
-            pantalla,
-            self.color,
-            (int(self.x), int(self.y)),
-            self.radio
-        )
-        
-        pygame.draw.circle(
-            pantalla,
-            (70, 40, 80),
-            (int(self.x), int(self.y)),
-            self.radio // 1.5
-        )
-
-
 # ==========================================================
 # JUGADOR (modificado para tener masa)
 # ==========================================================
 
-class Jugador:
+class Nave(Objeto):
     
-    def __init__(self):
-        self.x = random.random() * ANCHO
-        self.y = random.random() * ALTO
+    def __init__(self, controles={"avanzar":pygame.K_w, "retroceder":pygame.K_s, "girar_cw":pygame.K_e, "girar_acw":pygame.K_q}):
+        super().__init__(random.randint(0,ANCHO), random.randint(0,ALTO), 1000, 15, tipo="Nave")
+
+        self.controles = controles
+
         self.angulo = 0
         self.velocidad_angular = 0
+
+        self.empuje_lineal = 200
+        self.velocidad_maxima = 500
         
-        self.vx = 0
-        self.vy = 0
-        
-        # Propulsión lineal
-        self.empuje_lineal = 50
-        self.velocidad_maxima = 100
-        
-        # Propulsión angular
         self.aceleracion_angular = 250
         self.velocidad_angular_maxima = 300
         self.amortiguamiento_angular = 1.0
         
-        self.radio = 15
-        self.masa = 2000
+        self.masa = -100000
         
-        # Para el efecto de estela
         self.estela = []
 
+    def cambiar_controles(self, controles):
+        self.controles = controles
+
     def actualizar(self, dt, teclas):
+
         # Propulsión angular
-        if teclas[pygame.K_q]:
+        if teclas[self.controles["girar_acw"]]:
             self.velocidad_angular += self.aceleracion_angular * dt
         
-        if teclas[pygame.K_e]:
+        if teclas[self.controles["girar_cw"]]:
             self.velocidad_angular -= self.aceleracion_angular * dt
         
         self.velocidad_angular *= self.amortiguamiento_angular
@@ -134,7 +68,7 @@ class Jugador:
         # Propulsión lineal
         esta_propulsando = False
         
-        if teclas[pygame.K_w]:
+        if teclas[self.controles["avanzar"]]:
             radianes = math.radians(self.angulo)
             ax = math.cos(radianes) * self.empuje_lineal
             ay = -math.sin(radianes) * self.empuje_lineal
@@ -142,7 +76,7 @@ class Jugador:
             self.vy += ay * dt
             esta_propulsando = True
 
-        if teclas[pygame.K_s]:
+        if teclas[self.controles["retroceder"]]:
             radianes = math.radians(self.angulo)
             ax = math.cos(radianes) * self.empuje_lineal
             ay = -math.sin(radianes) * self.empuje_lineal
@@ -170,6 +104,21 @@ class Jugador:
         else:
             if self.estela: 
                 self.estela.pop(0)
+
+        # Bordes
+        if self.x - self.radio < 0:
+            self.x = self.radio
+            self.vx = -self.vx * 0.8  # Pérdida de energía en el rebote
+        elif self.x + self.radio > ANCHO:
+            self.x = ANCHO - self.radio
+            self.vx = -self.vx * 0.8
+            
+        if self.y - self.radio < 0:
+            self.y = self.radio
+            self.vy = -self.vy * 0.8
+        elif self.y + self.radio > ALTO:
+            self.y = ALTO - self.radio
+            self.vy = -self.vy * 0.8
     
     def dibujar(self, pantalla):
         # Estela
@@ -202,24 +151,39 @@ class Jugador:
             [punta, izquierda, derecha],
         )
 
+class Asteroide(Objeto):
+
+    def __init__(self, x, y, masa, radio):
+        super().__init__(x, y, masa, radio, tipo="Asteroide")
+    
+    def dibujar(self, pantalla):
+        pygame.draw.circle(
+            pantalla,
+            self.color,
+            (int(self.x), int(self.y)),
+            self.radio
+        )
 
 # ==========================================================
 # ESTRELLAS
 # ==========================================================
 
 def generar_estrellas(cantidad):
+
     estrellas = []
     for _ in range(cantidad):
         x = random.randint(0, ANCHO)
         y = random.randint(0, ALTO)
-        radio = random.randint(1, 4)
+        radio = random.randint(1, 2)
         brillo = random.randint(33, 150)
         rand_1 = random.randint(0,255)
-        color = (rand_1, random.randint(0,100), 255-rand_1)
+        color = (rand_1, max(0 ,rand_1 - 50), 0)
         estrellas.append((x, y, radio, brillo, color))
     return estrellas
 
+
 def dibujar_estrellas(pantalla, estrellas):
+
     for x, y, radio, brillo, color in estrellas:
         pygame.draw.circle(
             pantalla,
@@ -233,31 +197,39 @@ def dibujar_estrellas(pantalla, estrellas):
 # PRINCIPAL
 # ==========================================================
 
+
 def main():
+
     pygame.init()
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
     pygame.display.set_caption("Get Over Here - Gravedad")
     reloj = pygame.time.Clock()
     
-    jugador = Jugador()
     estrellas = generar_estrellas(50)
+
+    alpha_1 = Nave()
+    beta_1 = Nave()
+
+    beta_1.cambiar_controles({
+        "avanzar": pygame.K_i,
+        "retroceder": pygame.K_k,
+        "girar_cw": pygame.K_o,
+        "girar_acw": pygame.K_u
+    })
     
     objetos = []
-    for _ in range(50):
-        x = random.randint(0, ANCHO)
-        y = random.randint(0, ALTO)
-        masa = random.uniform(0.5, 2.0)
-        radio = random.randint(2, 4)
-        obj = Objeto(x, y, masa, radio)
+    for _ in range(20):
+        x=random.randint(0, ANCHO)
+        y=random.randint(0, ALTO)
+        obj = Asteroide(x, y, 100, 4)
         obj.color = (
-            random.randint(100, 255),
-            random.randint(50, 200),
-            random.randint(50, 150)
+            random.randint(50, 155),
+            random.randint(200, 250),
+            random.randint(25, 155)
         )
         objetos.append(obj)
     
     ejecutando = True
-    contador = 0
     
     while ejecutando:
         dt = reloj.tick(FPS) / 1000
@@ -277,10 +249,12 @@ def main():
         
         teclas = pygame.key.get_pressed()
         
-        jugador.actualizar(dt, teclas)
+        alpha_1.actualizar(dt, teclas)
+        beta_1.actualizar(dt, teclas)
         
         for obj in objetos:
-            obj.aplicar_gravedad(dt, [jugador])
+            if not obj.tipo == "AgujeroNegro": 
+                obj.aplicar_gravedad(dt, [alpha_1, beta_1]+objetos)
         
         pantalla.fill(COLOR_FONDO)
         dibujar_estrellas(pantalla, estrellas)
@@ -288,7 +262,8 @@ def main():
         for obj in objetos:
             obj.dibujar(pantalla)
         
-        jugador.dibujar(pantalla)
+        alpha_1.dibujar(pantalla)
+        beta_1.dibujar(pantalla)
         
         pygame.display.flip()
     
