@@ -1,189 +1,40 @@
 import math
 import random
-import os
-os.environ['SDL_VIDEODRIVER'] = 'x11'  # o 'wayland'
 
 import pygame
-from models.objeto import Objeto
+from models.nave import Nave
+from models.asteroide import Asteroide
 
 # ==========================================================
 # CONFIGURACIÓN
 # ==========================================================
 
-ANCHO = 1280
-ALTO = 720
+ANCHO = 1200
+ALTO = 700
 FPS = 60
 
 COLOR_FONDO = (5, 5, 15)
-
-COLOR_JUGADOR = (220, 220, 255)
-COLOR_ESTELA = (100, 100, 255)
-
-# ==========================================================
-# JUGADOR (modificado para tener masa)
-# ==========================================================
-
-class Nave(Objeto):
-    
-    def __init__(self, controles={"avanzar":pygame.K_w, "retroceder":pygame.K_s, "girar_cw":pygame.K_e, "girar_acw":pygame.K_q}):
-        super().__init__(random.randint(0,ANCHO), random.randint(0,ALTO), 1000, 15, tipo="Nave")
-
-        self.controles = controles
-
-        self.angulo = 0
-        self.velocidad_angular = 0
-
-        self.empuje_lineal = 200
-        self.velocidad_maxima = 500
-        
-        self.aceleracion_angular = 250
-        self.velocidad_angular_maxima = 300
-        self.amortiguamiento_angular = 1.0
-        
-        self.masa = -100000
-        
-        self.estela = []
-
-    def cambiar_controles(self, controles):
-        self.controles = controles
-
-    def actualizar(self, dt, teclas):
-
-        # Propulsión angular
-        if teclas[self.controles["girar_acw"]]:
-            self.velocidad_angular += self.aceleracion_angular * dt
-        
-        if teclas[self.controles["girar_cw"]]:
-            self.velocidad_angular -= self.aceleracion_angular * dt
-        
-        self.velocidad_angular *= self.amortiguamiento_angular
-        
-        if self.velocidad_angular > self.velocidad_angular_maxima:
-            self.velocidad_angular = self.velocidad_angular_maxima
-        elif self.velocidad_angular < -self.velocidad_angular_maxima:
-            self.velocidad_angular = -self.velocidad_angular_maxima
-        
-        self.angulo += self.velocidad_angular * dt
-        
-        # Propulsión lineal
-        esta_propulsando = False
-        
-        if teclas[self.controles["avanzar"]]:
-            radianes = math.radians(self.angulo)
-            ax = math.cos(radianes) * self.empuje_lineal
-            ay = -math.sin(radianes) * self.empuje_lineal
-            self.vx += ax * dt
-            self.vy += ay * dt
-            esta_propulsando = True
-
-        if teclas[self.controles["retroceder"]]:
-            radianes = math.radians(self.angulo)
-            ax = math.cos(radianes) * self.empuje_lineal
-            ay = -math.sin(radianes) * self.empuje_lineal
-            self.vx -= ax * dt
-            self.vy -= ay * dt
-            esta_propulsando = True
-        
-        # Límite de velocidad lineal
-        rapidez = math.sqrt(self.vx**2 + self.vy**2)
-        if rapidez > self.velocidad_maxima:
-            self.vx = (self.vx / rapidez) * self.velocidad_maxima
-            self.vy = (self.vy / rapidez) * self.velocidad_maxima
-        
-        # Movimiento
-        self.x += self.vx * dt
-        self.y += self.vy * dt
-        self.x = self.x % ANCHO
-        self.y = self.y % ALTO
-        
-        # Efecto de estela
-        if esta_propulsando:
-            self.estela.append((self.x, self.y))
-            if len(self.estela) > 20:
-                self.estela.pop(0)
-        else:
-            if self.estela: 
-                self.estela.pop(0)
-
-        # Bordes
-        if self.x - self.radio < 0:
-            self.x = self.radio
-            self.vx = -self.vx * 0.8  # Pérdida de energía en el rebote
-        elif self.x + self.radio > ANCHO:
-            self.x = ANCHO - self.radio
-            self.vx = -self.vx * 0.8
-            
-        if self.y - self.radio < 0:
-            self.y = self.radio
-            self.vy = -self.vy * 0.8
-        elif self.y + self.radio > ALTO:
-            self.y = ALTO - self.radio
-            self.vy = -self.vy * 0.8
-    
-    def dibujar(self, pantalla):
-        # Estela
-        if len(self.estela) > 2:
-            for i in range(len(self.estela) - 1):
-                pygame.draw.circle(
-                    pantalla,
-                    (250, 50, 70),
-                    (int(self.estela[i][0]), int(self.estela[i][1])),
-                    1
-                )
-        
-        radianes = math.radians(self.angulo)
-        punta = (
-            self.x + math.cos(radianes) * 10,
-            self.y - math.sin(radianes) * 10
-        )
-        izquierda = (
-            self.x + math.cos(radianes + 2.4) * 7.5,
-            self.y - math.sin(radianes + 2.4) * 7.5
-        )
-        derecha = (
-            self.x + math.cos(radianes - 2.4) * 7.5,
-            self.y - math.sin(radianes - 2.4) * 7.5
-        )
-        
-        pygame.draw.polygon(
-            pantalla,
-            COLOR_JUGADOR,
-            [punta, izquierda, derecha],
-        )
-
-class Asteroide(Objeto):
-
-    def __init__(self, x, y, masa, radio):
-        super().__init__(x, y, masa, radio, tipo="Asteroide")
-    
-    def dibujar(self, pantalla):
-        pygame.draw.circle(
-            pantalla,
-            self.color,
-            (int(self.x), int(self.y)),
-            self.radio
-        )
+COLOR_NAVE = (220, 220, 255)
 
 # ==========================================================
 # ESTRELLAS
 # ==========================================================
 
 def generar_estrellas(cantidad):
-
+    """Genera un fondo de estrellas aleatorio"""
     estrellas = []
     for _ in range(cantidad):
         x = random.randint(0, ANCHO)
         y = random.randint(0, ALTO)
         radio = random.randint(1, 2)
         brillo = random.randint(33, 150)
-        rand_1 = random.randint(0,255)
-        color = (rand_1, max(0 ,rand_1 - 50), 0)
+        rand_1 = random.randint(0, 255)
+        color = (rand_1, max(0, rand_1 - 50), 0)
         estrellas.append((x, y, radio, brillo, color))
     return estrellas
 
-
 def dibujar_estrellas(pantalla, estrellas):
-
+    """Dibuja el fondo de estrellas"""
     for x, y, radio, brillo, color in estrellas:
         pygame.draw.circle(
             pantalla,
@@ -192,55 +43,134 @@ def dibujar_estrellas(pantalla, estrellas):
             radio,
         )
 
+# ==========================================================
+# FUNCIONES DE DEBUG
+# ==========================================================
+
+def dibujar_info(pantalla, nave):
+    """Dibuja información de debug en pantalla"""
+    radianes_1 = math.radians(nave.angulo)
+    fuente = pygame.font.SysFont("Mono", 20)
+    
+    # Información de la nave
+    info_texto = [
+        f"Ángulo: {math.trunc(nave.angulo)}°",
+        f"Eje W: ({-math.sin(radianes_1):.2f}, {math.cos(radianes_1):.2f})",
+        f"Velocidad: ({nave.vx:.1f}, {nave.vy:.1f})",
+        f"Rapidez: {math.sqrt(nave.vx**2 + nave.vy**2):.1f}",
+        f"Masa: {nave.masa}"
+    ]
+    
+    for i, texto in enumerate(info_texto):
+        superficie_texto = fuente.render(texto, True, (0, 255, 0))
+        pantalla.blit(superficie_texto, (10, 10 + i * 25))
+
+
+# ==========================================================
+# COLISIONES
+# ==========================================================
+
+def manejar_colisiones(objetos, dt):
+    """Maneja todas las colisiones entre objetos"""
+    # Primero, detectar y resolver colisiones entre todos los objetos
+    for i in range(len(objetos)):
+        for j in range(i + 1, len(objetos)):
+            obj1 = objetos[i]
+            obj2 = objetos[j]
+            obj1.colisionar_con_objeto(obj2, dt)
+
 
 # ==========================================================
 # PRINCIPAL
 # ==========================================================
 
-
 def main():
-
     pygame.init()
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
-    pygame.display.set_caption("Get Over Here - Gravedad")
+    pygame.display.set_caption("Anti-Warp - Nave con campo vectorial")
     reloj = pygame.time.Clock()
     
+    # Generar fondo de estrellas
     estrellas = generar_estrellas(50)
 
-    alpha_1 = Nave()
-    beta_1 = Nave()
+    # Crear nave principal
+    nave_1 = Nave(x=ANCHO * (3/4), y=ALTO * (3/4))
+    nave_1.masa += 50000
 
-    beta_1.cambiar_controles({
+    # Crear segunda nave (opcional)
+    nave_2 = Nave(x=ANCHO * (2/3), y=ALTO * (2/3))
+    nave_2.cambiar_controles({
         "avanzar": pygame.K_i,
         "retroceder": pygame.K_k,
-        "girar_cw": pygame.K_o,
-        "girar_acw": pygame.K_u
+        "girar_cw": pygame.K_l,
+        "girar_acw": pygame.K_j
     })
+    nave_2.masa += 50000
     
+    # Lista de objetos
     objetos = []
-    for _ in range(20):
-        x=random.randint(0, ANCHO)
-        y=random.randint(0, ALTO)
-        obj = Asteroide(x, y, 100, 4)
-        obj.color = (
-            random.randint(50, 155),
-            random.randint(200, 250),
-            random.randint(25, 155)
+    objetos.append(nave_1)
+    objetos.append(nave_2)
+
+
+    # Generar asteroides
+    random_vel = [
+            (random.random()-0.5, random.random()-0.5),  
+            (random.random()-0.5, random.random()-0.5),  
+            (random.random()-0.5, random.random()-0.5),  
+            (random.random()-0.5, random.random()-0.5),  
+            (random.random()-0.5, random.random()-0.5),                
+    ]
+    for i in range(0):
+        r_cumulo = 0.01
+        extra_brillo = random.randint(0,50)
+        if i < 35:
+            spawn_x, spawn_y = 0.2, 0.2
+            color_particula = (150+extra_brillo,150+extra_brillo,205+extra_brillo)
+            masa = 4000
+        elif i < 60:
+            spawn_x, spawn_y = 0.9, 0.2
+            color_particula = (0+extra_brillo,0+extra_brillo,205+extra_brillo)
+            masa = 8000
+        elif i < 70:
+            spawn_x, spawn_y = 0.2, 0.9
+            color_particula = (0+extra_brillo,75+extra_brillo,205+extra_brillo)
+            masa = 100000
+        elif i < 85:
+            spawn_x, spawn_y = 0.9, 0.9
+            color_particula = (100+extra_brillo,100+extra_brillo,20+extra_brillo)
+            masa = 200000
+        else:
+            spawn_x, spawn_y = 0.5, 0.5
+            color_particula = (200+extra_brillo,100+extra_brillo,0+extra_brillo)
+            masa = 60000
+
+        radianes = math.radians(random.randint(-180, 180))
+        obj = Asteroide(
+            spawn_x * ANCHO + r_cumulo * i * math.cos(radianes),
+            spawn_y * ALTO + r_cumulo * i * math.sin(radianes),
+            masa,
+            3
         )
+        obj.color = (color_particula)
+
+        obj.vx += int(i/20)*10*random_vel[int(i/20)-1][0]
+        obj.vy += int(i/20)*10*random_vel[int(i/20)-1][1]
+        
         objetos.append(obj)
     
     ejecutando = True
     
     while ejecutando:
         dt = reloj.tick(FPS) / 1000
-        
+        # Procesar eventos
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 print("Cerrando ventana...")
                 ejecutando = False
-            # Tecla R para reiniciar
+            
             if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_r:
+                if evento.key == pygame.K_r:  # Reiniciar
                     for obj in objetos:
                         obj.x = random.randint(0, ANCHO)
                         obj.y = random.randint(0, ALTO)
@@ -249,21 +179,48 @@ def main():
         
         teclas = pygame.key.get_pressed()
         
-        alpha_1.actualizar(dt, teclas)
-        beta_1.actualizar(dt, teclas)
+        # Actualizar nave
+        nave_1.actualizar(dt, teclas, pantalla)
+        nave_2.actualizar(dt, teclas, pantalla)
         
+        # Aplicar efectos a los objetos
         for obj in objetos:
-            if not obj.tipo == "AgujeroNegro": 
-                obj.aplicar_gravedad(dt, [alpha_1, beta_1]+objetos)
+            obj.aplicar_gravedad(dt, objetos)
         
+        # Actualizar posiciones
+        for obj in objetos:
+            obj.actualizar_posicion(dt, pantalla)
+        
+        manejar_colisiones(objetos, dt)
+
+        # Dibujar
         pantalla.fill(COLOR_FONDO)
         dibujar_estrellas(pantalla, estrellas)
         
+        # Dibujar todos los objetos
         for obj in objetos:
             obj.dibujar(pantalla)
         
-        alpha_1.dibujar(pantalla)
-        beta_1.dibujar(pantalla)
+        # Dibujar información de debug
+        dibujar_info(pantalla, nave_1)
+        
+        # Dibujar vector hacia un objeto cercano (ejemplo)
+        # if len(objetos) > 1:
+        #     # Buscar el objeto más cercano para dibujar el vector
+        #     objeto_cercano = None
+        #     distancia_minima = float('inf')
+        #     for obj in objetos:
+        #         if obj is nave_1:
+        #             continue
+        #         dx = obj.x - nave_1.x
+        #         dy = obj.y - nave_1.y
+        #         distancia = math.sqrt(dx**2 + dy**2)
+        #         if distancia < distancia_minima:
+        #             distancia_minima = distancia
+        #             objeto_cercano = obj
+            
+        #     if objeto_cercano:
+        #         nave_1.dibujar_vector_hacia_objeto(pantalla, objeto_cercano)
         
         pygame.display.flip()
     
